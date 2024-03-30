@@ -1,61 +1,61 @@
 import socket
-import threading
-import pickle
+from _thread import *
 import sys
 
-MAX_CONNECTIONS = 2
-connections = []
-ready_to_start = False
+server = "192.168.199.1"
+port = 5555
 
-def handle_client(conn):
-    global ready_to_start
-    try:
-        while True:
-            data = conn.recv(1024)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    s.bind((server, port))
+except socket.error as e:
+    str(e)
+
+s.listen(2)
+print("Waiting for a connection, Server Started")
+
+def read_pos(str):
+    str = str.split(",")
+    return int(str[0]), int(str[1])
+
+
+def make_pos(tup):
+    return str(tup[0]) + "," + str(tup[1])
+
+pos = [(0,0),(100,100)]
+
+def threaded_client(conn, player):
+    conn.send(str.encode(make_pos(pos[player])))
+    reply = ""
+    while True:
+        try:
+            data = read_pos(conn.recv(2048).decode())
+            pos[player] = data
+
             if not data:
+                print("Disconnected")
                 break
-            # Xử lý dữ liệu từ client nếu cần
-    except Exception as e:
-        print("Error occurred while handling connection:", e)
-    finally:
-        connections.remove(conn)
-        conn.close()
+            else:
+                if player == 1:
+                    reply = pos[0]
+                else:
+                    reply = pos[1]
 
-def keyboard_listener():
-    global ready_to_start
-    while True:
-        key = input("Press 'q' to quit: ")
-        if key == 'q':
-            print("Closing server...")
-            for conn in connections:
-                conn.close()
-            sys.exit()
+                print("Received: ", data)
+                print("Sending : ", reply)
 
-def main():
-    global ready_to_start
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('localhost', 12345))
-    server_socket.listen(MAX_CONNECTIONS)
-    print("Server is waiting for connections...")
+            conn.sendall(str.encode(make_pos(reply)))
+        except:
+            break
 
-    threading.Thread(target=keyboard_listener, daemon=True).start()
+    print("Lost connection")
+    conn.close()
 
-    while True:
-        conn, addr = server_socket.accept()
-        connections.append(conn)
-        print("Connected to client", len(connections))
-        threading.Thread(target=handle_client, args=(conn,)).start()
+currentPlayer = 0
+while True:
+    conn, addr = s.accept()
+    print("Connected to:", addr)
 
-        if len(connections) == MAX_CONNECTIONS and not ready_to_start:
-            ready_to_start = True
-            print("Ready to start game")
-            for conn in connections:
-                conn.send(pickle.dumps({"start_game": True}))
-
-        if len(connections) > MAX_CONNECTIONS:
-            conn.send(pickle.dumps({"message": "Too many connections, please try again later."}))
-            conn.close()
-            connections.remove(conn)
-
-if __name__ == "__main__":
-    main()
+    start_new_thread(threaded_client, (conn, currentPlayer))
+    currentPlayer += 1

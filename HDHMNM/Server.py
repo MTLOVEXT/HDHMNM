@@ -1,91 +1,61 @@
 import socket
-import pickle
-import threading
-import tkinter as tk
+from _thread import *
+import sys
 
-# Define global variables
-MAX_CONNECTIONS = 2
-BOARD_SIZE = 15
-CELL_SIZE = 50
-SCREEN_SIZE = (BOARD_SIZE * CELL_SIZE, BOARD_SIZE * CELL_SIZE)
-board = [[0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
-current_player = 1
-connections = []
+server = "192.168.199.1"
+port = 5555
 
-def send_data(connection, data):
-    connection.send(pickle.dumps(data))
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def receive_data(connection):
-    return pickle.loads(connection.recv(1024))
+try:
+    s.bind((server, port))
+except socket.error as e:
+    str(e)
 
-def create_board():
-    global board
-    board = [[0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+s.listen(2)
+print("Waiting for a connection, Server Started")
 
-def check_win(row, col):
-    directions = [(1, 0), (0, 1), (1, 1), (1, -1)]  # vertical, horizontal, diagonal, anti-diagonal
+def read_pos(str):
+    str = str.split(",")
+    return int(str[0]), int(str[1])
 
-    for dr, dc in directions:
-        count = 1
-        for i in range(1, 5):
-            r = row + dr * i
-            c = col + dc * i
-            if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and board[r][c] == board[row][col]:
-                count += 1
-            else:
-                break
-        for i in range(1, 5):
-            r = row - dr * i
-            c = col - dc * i
-            if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE and board[r][c] == board[row][col]:
-                count += 1
-            else:
-                break
-        if count >= 5:
-            return True
 
-    return False
+def make_pos(tup):
+    return str(tup[0]) + "," + str(tup[1])
 
-def handle_connection(conn, addr):
-    global current_player
+pos = [(0,0),(100,100)]
+
+def threaded_client(conn, player):
+    conn.send(str.encode(make_pos(pos[player])))
+    reply = ""
     while True:
         try:
-            move = receive_data(conn)
-            board[move[0]][move[1]] = current_player
+            data = read_pos(conn.recv(2048).decode())
+            pos[player] = data
 
-            if check_win(move[0], move[1]):
-                print("Player", current_player, "wins!")
-                send_data(conn, {"winner": current_player})
-                for c in connections:
-                    c.close()
-                root.quit()
-                return
+            if not data:
+                print("Disconnected")
+                break
+            else:
+                if player == 1:
+                    reply = pos[0]
+                else:
+                    reply = pos[1]
 
-            current_player = 3 - current_player
-        except Exception as e:
-            print("Error occurred while handling connection:", e)
-            connections.remove(conn)
+                print("Received: ", data)
+                print("Sending : ", reply)
+
+            conn.sendall(str.encode(make_pos(reply)))
+        except:
             break
 
-def start_game():
-    global root
-    root = tk.Tk()
-    root.title("Caro Server")
+    print("Lost connection")
+    conn.close()
 
-    create_board()
+currentPlayer = 0
+while True:
+    conn, addr = s.accept()
+    print("Connected to:", addr)
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('localhost', 12345))
-    server_socket.listen(MAX_CONNECTIONS)
-    print("Server is waiting for connections...")
-
-    while len(connections) < MAX_CONNECTIONS:
-        conn, addr = server_socket.accept()
-        connections.append(conn)
-        print("Connected to client", len(connections))
-        threading.Thread(target=handle_connection, args=(conn, addr)).start()
-
-    root.mainloop()
-
-if __name__ == "__main__":
-    start_game()
+    start_new_thread(threaded_client, (conn, currentPlayer))
+    currentPlayer += 1

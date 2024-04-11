@@ -27,6 +27,13 @@ PLAYER1_TEXT_COLOR = (255, 0, 0)
 PLAYER2_TEXT_COLOR = (0, 0, 255)
 DEFAULT_TEXT_COLOR = (0, 0, 0)
 
+class Player:
+    def __init__(self, player_num):
+        self.player_num = player_num
+
+    def get_player_num(self):
+        return self.player_num
+    
 def create_board():
     board = [[0 for _ in range(BOARD_COLS)] for _ in range(BOARD_ROWS)]
     return board
@@ -152,11 +159,14 @@ def main():
     win = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Caro")
     n = Network()
-    startPos = n.recv_pos()  # Sử dụng phương thức recv_pos() để nhận vị trí từ máy chủ
+    startPos = n.recv_pos()
 
     board = create_board()
     history = []
+    player1 = Player(1)
+    player2 = Player(2)
     game_started = False
+
 
     while True:
         for event in pygame.event.get():

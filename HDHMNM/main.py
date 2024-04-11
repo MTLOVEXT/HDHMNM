@@ -1,8 +1,9 @@
 import pygame
 import sys
 from Network import Network
+from player import Player
 
-# Khai báo các hằng số và biến toàn cục
+# Các hằng số và biến toàn cục
 WIDTH, HEIGHT = 800, 600
 LINE_WIDTH = 15
 BOARD_ROWS, BOARD_COLS = 15, 15
@@ -27,13 +28,6 @@ PLAYER1_TEXT_COLOR = (255, 0, 0)
 PLAYER2_TEXT_COLOR = (0, 0, 255)
 DEFAULT_TEXT_COLOR = (0, 0, 0)
 
-class Player:
-    def __init__(self, player_num):
-        self.player_num = player_num
-
-    def get_player_num(self):
-        return self.player_num
-    
 def create_board():
     board = [[0 for _ in range(BOARD_COLS)] for _ in range(BOARD_ROWS)]
     return board
@@ -152,7 +146,7 @@ def display_message(message, player, position):
     text_y = CHAT_BOX_Y + CHAT_BOX_HEIGHT - position * 20
     text_rect = text.get_rect(x=text_x, y=text_y)
     win.blit(text, text_rect)
-
+    
 def main():
     pygame.init()
     global win, board, history
@@ -163,8 +157,8 @@ def main():
 
     board = create_board()
     history = []
-    player1 = Player(1)
-    player2 = Player(2)
+    player1 = Player(1, n)
+    player2 = Player(2, n)
     game_started = False
 
 
